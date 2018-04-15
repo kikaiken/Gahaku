@@ -74,7 +74,7 @@ class my_class:
         b = tkinter.OptionMenu(window, self.color, *COLORS)
         b.pack()
         window.mainloop()
-        self.th.stop()
+        self.th._stop()
 
     def erase(self, event):
         self.canvas.delete("line")
