@@ -14,8 +14,18 @@ import csv
 import os
 import tkinter.filedialog
 import tkinter.messagebox
+import position
+import lineSplit
+
+fs = 10
 
 ser = serial.Serial("/dev/ttyACM0",76800,timeout=1)
+
+def filterForWindow(x, y, z):
+    return [-int(x)/4 + 80, -int(y)/4 + 380, int(z)]
+
+def Inverse_filterForWindow(x, y, z):
+    return [-4*(int(x) - 80),-4*(int(y) - 380), int(z)]
 
 def serial_send(x,y,z):
     print("Canvas_X:"+str(x)+"Canvas_Y:"+str(y)+"Canvas_Z:"+str(z))
@@ -43,9 +53,11 @@ class csv_logger:
         root.withdraw()
         fTyp = [("",".csv")]
         iDir = os.path.abspath(os.path.dirname(__file__))
-        csv_name = tkinter.filedialog.askopenfilename(filetypes = fTyp,initialdir = iDir)
+        csvdir = iDir + '/csvfiles'
+        csv_name = tkinter.filedialog.askopenfilename(filetypes = fTyp,initialdir = csvdir)
         self.f = open(csv_name,"r")
         return csv.reader(self.f)
+
 class my_class:
     def __init__(self):
         self.logger = None
@@ -82,7 +94,7 @@ class my_class:
     def log_open(self,event):
         self.logger = csv_logger()
         data_list = self.logger.open()
-        self.th = threading.Thread(target=draw_canvas, name="draw_thread", args=(self.canvas, self.color.get(), data_list,))
+        self.th = threading.Thread(target=draw_canvas2, name="draw_thread", args=(self.canvas, self.color.get(), data_list,))
         self.th.setDaemon(True)
         self.th.start()
 
@@ -100,6 +112,45 @@ def draw_canvas(canvas,color,data):
         pri_y = item[1]
         time.sleep(0.05)
     
+def draw_canvas2(canvas, color, data):
+    pre_state = position.Point()
+    cur_state = position.Point()
+
+    for item in data:
+        if pre_state.Windowpoint == [0, 0, 0]:
+            cur_state.Windowpoint = item
+            cur_state.point = filterForWindow(*cur_state.Windowpoint)
+            if float(cur_state.point[2]) <= 2:
+                canvas.create_oval(cur_state.Windowpoint[0], cur_state.Windowpoint[1], cur_state.Windowpoint[0], cur_state.Windowpoint[1], outline=color, width=3, tag="line")
+
+            pre_state.Windowpoint = cur_state.Windowpoint
+            pre_state.point = cur_state.point
+            
+        else:
+            cur_state.Windowpoint = item
+            cur_state.point = filterForWindow(*cur_state.Windowpoint)
+            
+            point_buff = lineSplit.lineSplit_sin(pre_state.point, cur_state.point)
+
+            for n in range(fs):
+                cur_state.point = point_buff[n]
+                cur_state.Windowpoint = Inverse_filterForWindow(*cur_state.point)
+                if float(cur_state.Windowpoint[2]) < -1:
+                    canvas.create_line(pre_state.Windowpoint[0], pre_state.Windowpoint[1], cur_state.Windowpoint[0], cur_state.Windowpoint[1], fill=color, width=5, tag="line")
+                if - 1 <= float(cur_state.Windowpoint[2]) <= 2:
+                    canvas.create_line(pre_state.Windowpoint[0], pre_state.Windowpoint[1], cur_state.Windowpoint[0], cur_state.Windowpoint[1], fill=color, width=3, tag="line")
+                if 2 <= float(cur_state.Windowpoint[2]) <= 5:
+                    canvas.create_line(pre_state.Windowpoint[0], pre_state.Windowpoint[1], cur_state.Windowpoint[0], cur_state.Windowpoint[1], fill=color, width=1, tag="line")
+                
+                serial_send(*cur_state.point)
+
+                pre_state.Windowpoint = cur_state.Windowpoint
+                pre_state.point = cur_state.point
+                time.sleep(0.02)
+            
+            pre_state.Windowpoint = cur_state.Windowpoint
+            pre_state.point = cur_state.point
+            
 serial_send(0,250,20)
 root = my_class()
 ser.close()

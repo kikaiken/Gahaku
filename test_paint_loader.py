@@ -15,7 +15,7 @@ import tkinter.messagebox
 import lineSplit
 import position
 
-fs = 100 
+fs = 10 
 
 def filterForWindow(x, y, z):
     return [-int(x)/4 + 80, -int(y)/4 + 380, int(z)]
@@ -79,9 +79,11 @@ class my_class:
         self.logger = csv_logger()
         data_list = self.logger.open()
         self.th = threading.Thread(target=draw_canvas, name="draw_thread", args=(self.canvas, 'black' , data_list,))
+
         self.th.setDaemon(True)
 
         self.th_test = threading.Thread(target=draw_canvas_test, name="draw_thread_test", args=(self.canvas, 'red', data_list,))
+
         self.th_test.setDaemon(True)
 
         self.th.start()

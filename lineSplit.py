@@ -1,6 +1,6 @@
 import numpy as np
 
-fs = 100 
+fs = 10 
 k = np.sum(np.array([np.sin(np.pi * ((2 * i + 1) / (2 * fs))) for i in range(fs)]))
 
 def lineSplit_sin(pre_data,data):
